@@ -1,6 +1,8 @@
-#requires -Modules WebAdministration
+
+# Requires the WebAdministration module for IIS management
 Import-Module WebAdministration
 
+# Resolves a physical path, expanding environment variables and handling relative paths
 function Resolve-PhysicalPath([string]$Path) {
   if (-not $Path) { return $null }
   $expanded = [Environment]::ExpandEnvironmentVariables($Path)
@@ -10,42 +12,43 @@ function Resolve-PhysicalPath([string]$Path) {
   return $expanded
 }
 
-# --- MAPEOS COMPLETOS .NET FRAMEWORK (Release DWORD -> versión) ---
+# Maps .NET Framework release DWORD to human-readable version
 function Get-FrameworkVersionFromRelease([int]$release) {
   if     ($release -ge 533320) { return "4.8.1" }
-  elseif ($release -ge 528049) { return "4.8"    } # Win10
-  elseif ($release -ge 528040) { return "4.8"    } # Otros
-  elseif ($release -ge 461814) { return "4.7.2"  } # Win10
-  elseif ($release -ge 461808) { return "4.7.2"  }
-  elseif ($release -ge 461310) { return "4.7.1"  } # Win10
-  elseif ($release -ge 461308) { return "4.7.1"  }
-  elseif ($release -ge 460805) { return "4.7"    } # Win10
-  elseif ($release -ge 460798) { return "4.7"    }
-  elseif ($release -ge 394806) { return "4.6.2"  } # Win10
-  elseif ($release -ge 394802) { return "4.6.2"  }
-  elseif ($release -ge 394271) { return "4.6.1"  } # Win10
-  elseif ($release -ge 394254) { return "4.6.1"  }
-  elseif ($release -ge 393297) { return "4.6"    } # Otros
-  elseif ($release -ge 393295) { return "4.6"    } # Win10
-  elseif ($release -ge 379893) { return "4.5.2"  }
-  elseif ($release -ge 378758) { return "4.5.1"  } # Otros
-  elseif ($release -ge 378675) { return "4.5.1"  } # Win8.1/2012R2
-  elseif ($release -ge 378389) { return "4.5"    }
-  else                         { return "4.0 o anterior" }
+  elseif ($release -ge 528049) { return "4.8" }
+  elseif ($release -ge 528040) { return "4.8" }
+  elseif ($release -ge 461814) { return "4.7.2" }
+  elseif ($release -ge 461808) { return "4.7.2" }
+  elseif ($release -ge 461310) { return "4.7.1" }
+  elseif ($release -ge 461308) { return "4.7.1" }
+  elseif ($release -ge 460805) { return "4.7" }
+  elseif ($release -ge 460798) { return "4.7" }
+  elseif ($release -ge 394806) { return "4.6.2" }
+  elseif ($release -ge 394802) { return "4.6.2" }
+  elseif ($release -ge 394271) { return "4.6.1" }
+  elseif ($release -ge 394254) { return "4.6.1" }
+  elseif ($release -ge 393297) { return "4.6" }
+  elseif ($release -ge 393295) { return "4.6" }
+  elseif ($release -ge 379893) { return "4.5.2" }
+  elseif ($release -ge 378758) { return "4.5.1" }
+  elseif ($release -ge 378675) { return "4.5.1" }
+  elseif ($release -ge 378389) { return "4.5" }
+  else                         { return "4.0 or earlier" }
 }
 
+# Gets the highest .NET Framework 4.x version installed on the machine
 function Get-MachineFramework4x {
   $rel = (Get-ItemProperty 'HKLM:\SOFTWARE\Microsoft\NET Framework Setup\NDP\v4\Full' -ErrorAction SilentlyContinue).Release
   if ($rel) { return Get-FrameworkVersionFromRelease $rel }
   return $null
 }
 
-# --- LECTURA DE targetFramework EN Web.config (.NET Framework 4.x) ---
+# Reads the targetFramework from web.config for .NET Framework 4.x sites
 function Get-FrameworkTargetFromWebConfig([string]$root) {
-  $web = Join-Path $root 'web.config'
-  if (-not (Test-Path $web)) { return $null }
+  $webConfig = Join-Path $root 'web.config'
+  if (-not (Test-Path $webConfig)) { return $null }
   try {
-    [xml]$xml = Get-Content $web -ErrorAction Stop
+    [xml]$xml = Get-Content $webConfig -ErrorAction Stop
     if ($xml.configuration.'system.web'.compilation) {
       return $xml.configuration.'system.web'.compilation.targetFramework
     }
@@ -53,41 +56,39 @@ function Get-FrameworkTargetFromWebConfig([string]$root) {
   return $null
 }
 
-# --- DETECCIÓN .NET Core / .NET 5+ DESDE runtimeconfig.json ---
+# Detects .NET Core / .NET 5+ from runtimeconfig.json in the site folder
 function Get-CoreInfoFromFolder([string]$root) {
-  $web = Join-Path $root 'web.config'
+  $webConfig = Join-Path $root 'web.config'
   $hasAspNetCore = $false
-  if (Test-Path $web) {
+  if (Test-Path $webConfig) {
     try {
-      [xml]$xml = Get-Content $web -ErrorAction Stop
+      [xml]$xml = Get-Content $webConfig -ErrorAction Stop
       $hasAspNetCore = [bool]$xml.configuration.'system.webServer'.aspNetCore
     } catch {}
   }
-  # localizar *.runtimeconfig.json
-  $rc = $null
-  if ($hasAspNetCore -and (Test-Path $web)) {
+  $runtimeConfig = $null
+  if ($hasAspNetCore -and (Test-Path $webConfig)) {
     try {
-      [xml]$xml2 = Get-Content $web -ErrorAction Stop
+      [xml]$xml2 = Get-Content $webConfig -ErrorAction Stop
       $node = $xml2.configuration.'system.webServer'.aspNetCore
       if ($node -and $node.arguments -match '\.dll') {
-        $rel = $node.arguments.Split(' ')[0]
-        $rc  = [IO.Path]::ChangeExtension((Join-Path $root $rel),'.runtimeconfig.json')
+        $dll = $node.arguments.Split(' ')[0]
+        $runtimeConfig = [IO.Path]::ChangeExtension((Join-Path $root $dll), '.runtimeconfig.json')
       }
     } catch {}
   }
-  if (-not $rc -or -not (Test-Path $rc)) {
+  if (-not $runtimeConfig -or -not (Test-Path $runtimeConfig)) {
     $first = Get-ChildItem -Path $root -Filter *.runtimeconfig.json -File -ErrorAction SilentlyContinue | Select-Object -First 1
-    if ($first) { $rc = $first.FullName }
+    if ($first) { $runtimeConfig = $first.FullName }
   }
-  if (-not $rc -or -not (Test-Path $rc)) { return $null }
+  if (-not $runtimeConfig -or -not (Test-Path $runtimeConfig)) { return $null }
 
-  $json = Get-Content $rc -Raw | ConvertFrom-Json
+  $json = Get-Content $runtimeConfig -Raw | ConvertFrom-Json
   $tfm  = $json.runtimeOptions.tfm
-  $run  = $json.runtimeOptions.framework.version
-  if (-not $run -and $json.runtimeOptions.frameworks) {
-    $run = ($json.runtimeOptions.frameworks | Where-Object {$_.name -eq 'Microsoft.NETCore.App'} | Select-Object -First 1).version
+  $runtimeVersion  = $json.runtimeOptions.framework.version
+  if (-not $runtimeVersion -and $json.runtimeOptions.frameworks) {
+    $runtimeVersion = ($json.runtimeOptions.frameworks | Where-Object {$_.name -eq 'Microsoft.NETCore.App'} | Select-Object -First 1).version
   }
-  # Mapeo legible de TFM -> familia/versión
   $family = ".NET (Core/5+)"
   $label  = $tfm
   if ($tfm -like 'netcoreapp*') {
@@ -97,52 +98,69 @@ function Get-CoreInfoFromFolder([string]$root) {
     $label = $tfm -replace '^net',''
     $label = ".NET $label"
   }
-  $obj = New-Object psobject
-  $obj | Add-Member NoteProperty Platform $family
-  $obj | Add-Member NoteProperty Version  (($label) + ($(if($run){" (runtime $run)"} else {""})))
+  $versionString = $label
+  if ($runtimeVersion) {
+    $versionString += " (runtime $runtimeVersion)"
+  }
+  $obj = [PSCustomObject]@{
+    Platform = $family
+    Version  = $versionString
+  }
   return $obj
 }
 
-$machineFx = Get-MachineFramework4x
-$rows = @()
+# Main script logic: collects IIS site inventory and exports to CSV
+$machineFramework = Get-MachineFramework4x
+$inventoryRows = @()
 
-Get-Website | ForEach-Object {
-  $site = $_
-  # tomamos solo la app raíz por tu requerimiento
-  $phys = Resolve-PhysicalPath $site.physicalPath
-  $pool = Get-Item ("IIS:\AppPools\" + $site.applicationPool) -ErrorAction SilentlyContinue
-  $clr  = if ($pool) { $pool.managedRuntimeVersion } else { $null }
+foreach ($site in Get-Website) {
+  # Only root application is considered
+  $physicalPath = Resolve-PhysicalPath $site.physicalPath
+  $appPool = Get-Item ("IIS:\AppPools\$($site.applicationPool)") -ErrorAction SilentlyContinue
+  $clrVersion = if ($appPool) { $appPool.managedRuntimeVersion } else { $null }
 
-  # ¿Es Core/5+?
-  $coreInfo = if ($phys) { Get-CoreInfoFromFolder $phys } else { $null }
-
-  $platform = $null; $version = $null
-
+  # Detect .NET Core / 5+ or .NET Framework
+  $coreInfo = if ($physicalPath) { Get-CoreInfoFromFolder $physicalPath } else { $null }
   if ($coreInfo) {
     $platform = $coreInfo.Platform
     $version  = $coreInfo.Version
   } else {
-    # Framework 4.x
     $platform = ".NET Framework"
-    $tf = if ($phys) { Get-FrameworkTargetFromWebConfig $phys } else { $null }
-    if ($tf) {
-      $version = $tf
-    } elseif ($clr -eq 'v4.0') {
-      $version = if ($machineFx) { $machineFx + " (instalada en el servidor)" } else { "4.x (indeterminada)" }
-    } elseif ($clr -eq 'v2.0') {
+    $targetFramework = if ($physicalPath) { Get-FrameworkTargetFromWebConfig $physicalPath } else { $null }
+    if ($targetFramework) {
+      $version = $targetFramework
+    } elseif ($clrVersion -eq 'v4.0') {
+      $version = if ($machineFramework) { "$machineFramework (installed on server)" } else { "4.x (undetermined)" }
+    } elseif ($clrVersion -eq 'v2.0') {
       $version = "2.0/3.5"
     } else {
-      $version = "indeterminada"
+      $version = "undetermined"
     }
   }
 
-  $rows += [pscustomobject]@{
-    Application         = $site.name
-    AppPool      = $site.applicationPool
-    Platform     = $platform
-    Version      = $version
-    Path = $phys
+  $inventoryRows += [PSCustomObject]@{
+    Application = $site.name
+    AppPool     = $site.applicationPool
+    Platform    = $platform
+    Version     = $version
+    Path        = $physicalPath
   }
 }
 
-$rows | Sort-Object Site | Format-Table -AutoSize
+# Prepare output file path
+$server    = $env:COMPUTERNAME
+$timestamp = Get-Date -Format "yyyyMMdd-HHmmss"
+$outDir    = "C:\IIS_Reports"
+$outFile   = "IISInventory-$server-$timestamp.csv"
+$outPath   = Join-Path $outDir $outFile
+
+# Ensure output directory exists
+if (-not (Test-Path $outDir)) {
+  New-Item -Path $outDir -ItemType Directory -Force | Out-Null
+}
+
+# Export inventory to CSV
+$inventoryRows | Sort-Object Application | Export-Csv -Path $outPath -NoTypeInformation -Encoding UTF8
+
+# Print only the location of the saved inventory
+Write-Host "Inventario guardado en: $outPath"
