@@ -1,0 +1,16 @@
+{
+  "url": "https://www.tuya.com.co/favicon.ico",
+  "status": 404,
+  "headers": {
+    "content-encoding": "gzip",
+    "content-type": "text/html; charset=iso-8859-1",
+    "date": "Sun, 16 Nov 2025 22:35:44 GMT",
+    "server": "Apache",
+    "set-cookie": "nlbi_1881794=6wLdE8kcRV6TX+kfrk7yvAAAAABGFmpYT0FRtkr+Cjl4gCOC; HttpOnly; path=/; Domain=.tuya.com.co; Secure; SameSite=None",
+    "strict-transport-security": "max-age=31536000",
+    "tls": "TLSv1.3",
+    "x-cdn": "Imperva",
+    "x-content-type-options": "nosniff",
+    "x-iinfo": "62-128885069-128885919 NNYN CT(119 236 0) RT(1763332539615 4724) q(0 0 4 -1) r(5 5) U11"
+  }
+}
