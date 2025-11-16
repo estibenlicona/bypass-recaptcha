@@ -15,7 +15,7 @@ const axios = require("axios");
     };
   });
 
-  const targetUrl = "https://pagostarjetadecredito.apps.bancolombia.com/#/inicio";
+  const targetUrl = "https://www.tuya.com.co/pagarcuotatuya";
   await page.goto(targetUrl, { waitUntil: "networkidle2" });
 
   // Solicita un token válido desde la API de Anti-Captcha

@@ -13,6 +13,6 @@
   "dependencies": {
     "@antiadmin/anticaptchaofficial": "^1.0.53",
     "axios": "^1.11.0",
-    "puppeteer": "^24.16.0"
+    "puppeteer": "^24.30.0"
   }
 }
