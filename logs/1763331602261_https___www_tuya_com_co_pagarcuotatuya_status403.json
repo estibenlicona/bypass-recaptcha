@@ -1,0 +1,13 @@
+{
+  "url": "https://www.tuya.com.co/pagarcuotatuya",
+  "status": 403,
+  "headers": {
+    "cache-control": "no-cache, no-store",
+    "content-length": "933",
+    "content-type": "text/html",
+    "set-cookie": "incap_ses_309_1881794=WtCMGpznUR4/4w4NSMpJBBFOGmkAAAAAH3DiEt0gpMws4mjexDeRqQ==; path=/; Domain=.tuya.com.co; Secure; SameSite=None",
+    "strict-transport-security": "max-age=31536000",
+    "tls": "TLSv1.3",
+    "x-iinfo": "1-565592-0 0NNN RT(1763331601262 772) q(0 -1 -1 0) r(0 -1) B16 U18"
+  }
+}
